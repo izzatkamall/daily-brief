@@ -4,8 +4,7 @@
  * Strategy: build a compact, deterministic description of the open tasks, then
  * ask an LLM to turn it into a short natural-language brief. If no provider/key
  * is configured (or the call fails) we fall back to a deterministic locally
- * generated brief so the feature always works. The real provider wiring is
- * fleshed out in Phase 3.
+ * generated brief so the feature always works.
  */
 
 function startOfToday() {
@@ -48,25 +47,110 @@ export function fallbackBrief(tasks) {
   const parts = [];
   parts.push(`You have ${open.length} open task${open.length === 1 ? '' : 's'}.`);
   if (overdue.length) {
-    parts.push(
-      `${overdue.length} overdue: ${overdue.map((t) => t.title).join(', ')}.`,
-    );
+    parts.push(`${overdue.length} overdue: ${overdue.map((t) => t.title).join(', ')}.`);
   }
   if (dueToday.length) {
-    parts.push(
-      `${dueToday.length} due today: ${dueToday.map((t) => t.title).join(', ')}.`,
-    );
+    parts.push(`${dueToday.length} due today: ${dueToday.map((t) => t.title).join(', ')}.`);
   }
   const order = byPriority.slice(0, 3).map((t, i) => `${i + 1}. ${t.title} (${t.priority})`);
   parts.push(`Suggested order: ${order.join('  ')}.`);
   return parts.join(' ');
 }
 
+/** Build the LLM prompt from the categorized tasks. */
+function buildPrompt(tasks) {
+  const { open, overdue, dueToday, upcoming } = analyzeTasks(tasks);
+  const fmt = (t) =>
+    `- "${t.title}" (priority: ${t.priority}${t.dueDate ? `, due ${t.dueDate.slice(0, 10)}` : ', no due date'})` +
+    (t.description ? ` — ${t.description}` : '');
+
+  const today = startOfToday().toISOString().slice(0, 10);
+  const lines = [
+    `Today is ${today}. You are a concise, friendly productivity assistant.`,
+    `Write a short "Daily Brief" (3-5 sentences, plain prose, no markdown headings) summarizing the user's open tasks.`,
+    `Mention what is overdue, what is due today, and suggest a sensible order to tackle them. Be encouraging but brief.`,
+    '',
+    `Open tasks: ${open.length}`,
+  ];
+  if (overdue.length) lines.push(`Overdue:\n${overdue.map(fmt).join('\n')}`);
+  if (dueToday.length) lines.push(`Due today:\n${dueToday.map(fmt).join('\n')}`);
+  if (upcoming.length) lines.push(`Upcoming / no date:\n${upcoming.map(fmt).join('\n')}`);
+  if (open.length === 0) lines.push('There are no open tasks.');
+  return lines.join('\n');
+}
+
+async function callGemini(prompt, { apiKey, model }) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
+    },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      // Newer flash models spend part of the budget on internal "thinking",
+      // so give a generous cap to leave room for the visible brief.
+      generationConfig: { temperature: 0.5, maxOutputTokens: 2048 },
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Gemini ${res.status}: ${await res.text()}`);
+  }
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') ?? '';
+  if (!text.trim()) throw new Error('Gemini returned empty text');
+  return text.trim();
+}
+
+async function callOpenAI(prompt, { apiKey, model }) {
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.5,
+      max_tokens: 300,
+      messages: [
+        { role: 'system', content: 'You are a concise, friendly productivity assistant.' },
+        { role: 'user', content: prompt },
+      ],
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`OpenAI ${res.status}: ${await res.text()}`);
+  }
+  const data = await res.json();
+  const text = data?.choices?.[0]?.message?.content ?? '';
+  if (!text.trim()) throw new Error('OpenAI returned empty text');
+  return text.trim();
+}
+
 /**
- * Generate a brief. In Phase 1 this always returns the deterministic fallback.
- * Phase 3 replaces the body with real OpenAI/Gemini calls, keeping this fallback
- * as the safety net.
+ * Generate a brief. Uses the configured provider; on any error (or no key)
+ * falls back to the deterministic local brief so the endpoint never fails.
  */
-export async function generateBrief(tasks, _config = {}) {
-  return { brief: fallbackBrief(tasks), source: 'fallback' };
+export async function generateBrief(tasks, config = {}) {
+  const { provider, apiKey } = config;
+  if (!provider || !apiKey) {
+    return { brief: fallbackBrief(tasks), source: 'fallback' };
+  }
+  try {
+    const prompt = buildPrompt(tasks);
+    let text;
+    if (provider === 'gemini') {
+      text = await callGemini(prompt, { apiKey, model: config.geminiModel ?? 'gemini-2.5-flash' });
+    } else if (provider === 'openai') {
+      text = await callOpenAI(prompt, { apiKey, model: config.openaiModel ?? 'gpt-4o-mini' });
+    } else {
+      return { brief: fallbackBrief(tasks), source: 'fallback' };
+    }
+    return { brief: text, source: provider };
+  } catch (err) {
+    console.error('[ai] brief generation failed, using fallback:', err.message);
+    return { brief: fallbackBrief(tasks), source: 'fallback', error: err.message };
+  }
 }
