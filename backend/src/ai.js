@@ -142,7 +142,7 @@ export async function generateBrief(tasks, config = {}) {
     const prompt = buildPrompt(tasks);
     let text;
     if (provider === 'gemini') {
-      text = await callGemini(prompt, { apiKey, model: config.geminiModel ?? 'gemini-2.5-flash' });
+      text = await callGemini(prompt, { apiKey, model: config.geminiModel ?? 'gemini-flash-latest' });
     } else if (provider === 'openai') {
       text = await callOpenAI(prompt, { apiKey, model: config.openaiModel ?? 'gpt-4o-mini' });
     } else {

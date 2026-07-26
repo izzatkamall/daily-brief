@@ -10,7 +10,7 @@ const app = createApp(db, {
     provider: process.env.AI_PROVIDER || '',
     apiKey: process.env.AI_API_KEY || '',
     openaiModel: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-    geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+    geminiModel: process.env.GEMINI_MODEL || 'gemini-flash-latest',
   },
 });
 
