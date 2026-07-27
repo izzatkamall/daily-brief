@@ -209,8 +209,6 @@ Task = {
 - **AI brief is on-demand**, not a scheduled job (explained above).
 - **Android implements the required subset** — view list, create, mark complete, filter, and the
   brief. Edit and delete exist on the web but were left off Android since they weren't required.
-- **Android due-date entry is a text field** (`YYYY-MM-DD`) rather than a date picker, to avoid
-  extra UI dependencies.
 - **SQLite** keeps setup to zero (a single file, no DB server to run).
 
 **With more time I'd add:**
@@ -219,7 +217,7 @@ Task = {
 - A scheduled nightly job that generates and **caches** the daily brief (so it's instant and
   doesn't call the LLM on every button press), while keeping the on-demand button for a refresh.
 - Automated tests for the web and Android layers (only the backend has tests today).
-- Edit/delete and a proper date picker on Android; pull-to-refresh.
+- Edit/delete on Android; pull-to-refresh.
 - Priority filter on Android (web has it); pagination for large lists.
 - Loading/skeleton states and nicer error surfaces throughout.
 
