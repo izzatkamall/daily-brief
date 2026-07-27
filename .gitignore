@@ -29,3 +29,6 @@ android/captures/
 # Editor
 .vscode/
 .idea/
+
+# large demo recordings (published as release assets)
+demoVideos/
