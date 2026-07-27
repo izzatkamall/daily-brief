@@ -10,6 +10,10 @@ A small task-tracking system with three clients sharing **one backend**:
 Built as a technical assessment. The goal was sensible scope and clean, working end-to-end
 integration rather than production polish.
 
+Here are the links to the working demo videos:
+https://github.com/izzatkamall/daily-brief/releases/download/v1.0/demoApp.mp4
+https://github.com/izzatkamall/daily-brief/releases/download/v1.0/demoBrowser.mp4
+
 ## Architecture
 
 ```
