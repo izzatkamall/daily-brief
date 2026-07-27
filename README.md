@@ -10,16 +10,19 @@ A small task-tracking system with three clients sharing **one backend**:
 Built as a technical assessment. The goal was sensible scope and clean, working end-to-end
 integration rather than production polish.
 
-Here are the links to the working demo videos:
-https://github.com/izzatkamall/daily-brief/releases/download/v1.0/demoApp.mp4
-https://github.com/izzatkamall/daily-brief/releases/download/v1.0/demoBrowser.mp4
+## Demo recordings
+
+- **Web app** — [demoBrowser.mp4](https://github.com/izzatkamall/daily-brief/releases/download/v1.0/demoBrowser.mp4) (501 MB direct download)
+- **Android app** — [demoApp.mp4](https://github.com/izzatkamall/daily-brief/releases/download/v1.0/demoApp.mp4) (118 MB direct download)
+
+Both are also on the [v1.0 release page](https://github.com/izzatkamall/daily-brief/releases/tag/v1.0).
 
 ## Architecture
 
 ```
    ┌────────────┐        ┌────────────┐
-   │  Web (React│        │  Android   │
-   │   + Vite)  │        │ (Compose)  │
+   │ Web (React │        │  Android   │
+   │  + Vite)   │        │ (Compose)  │
    └─────┬──────┘        └─────┬──────┘
          │  REST/JSON (Bearer token) │
          └───────────┬───────────────┘
